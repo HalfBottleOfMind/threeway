@@ -62,9 +62,9 @@ class User extends Authenticatable
                     ->groupBy('id');
 
         $tournaments->each(function ($tournament, $key) use ($tournaments) {
-            $tournaments[$key] = collect(Tournament::find($key))->union([
+            $tournaments[$key] = collect($tournament->first())->except('pivot')->union([
                 'achievements' => Achievement::find(
-                    $tournament->pluck('pivot.achievement_id')
+                    $tournament->pluck('pivot.achievement_id')->filter()
                 )
             ]);
         });
