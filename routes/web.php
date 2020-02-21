@@ -19,5 +19,8 @@ Route::get('/', function () {
 });
 
 Route::get('/users/{user:id}/tournaments', function(User $user) {
-    return $user->tournaments;
+    \DB::enableQueryLog();
+    $data = $user->tournaments;
+    logger(\DB::getQueryLog());
+    return $data;
 });
