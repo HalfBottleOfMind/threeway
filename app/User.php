@@ -25,7 +25,7 @@ class User extends Authenticatable
      * @var array
      */
     protected $hidden = [
-        'password', 'remember_token',
+        'password', 'remember_token', 'pivot'
     ];
 
     /**
@@ -36,6 +36,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    public $timestamps = false;
 
     /**
      * Many-to-many relation to Tournament
@@ -57,18 +59,25 @@ class User extends Authenticatable
     public function getTournamentsAttribute()
     {
         $tournaments = $this->tournaments()
-                    ->withPivot('achievement_id')
-                    ->get()
-                    ->groupBy('id');
+            ->withPivot('achievement_id')
+            ->get();
 
-        $achievements = $this->achievements->unique();
+        $achievements = Achievement::find(
+            $tournaments->pluck('pivot.achievement_id')->filter()
+        );
+
+        $tournaments = $tournaments->groupBy('id');
 
         $tournaments->each(function ($tournament, $key) use ($tournaments, $achievements) {
             $tournaments[$key] = collect($tournament->first())->except('pivot')->union([
                 'achievements' => $achievements->whereIn(
                     'id',
                     $tournament->pluck('pivot.achievement_id')->filter()
-                )
+                ),
+                'points' => $achievements->whereIn(
+                    'id',
+                    $tournament->pluck('pivot.achievement_id')->filter()
+                )->sum('cost')
             ]);
         });
 
@@ -98,10 +107,8 @@ class User extends Authenticatable
         $builder = $this->achievements();
         if ($tournanent) {
             $builder = $builder->withPivot('tournament_id')
-                                ->where('pivot_tournament_id', $tournanent->id);
+                ->where('pivot_tournament_id', $tournanent->id);
         }
         return $builder->get()->sum('cost');
     }
-
-
 }
